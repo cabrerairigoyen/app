@@ -9,57 +9,37 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential gcc-arm-none-eabi
-    
-    - name: Clone Upsilon-External for API
+        sudo apt-get install -y build-essential gcc-arm-none-eabi make git
+
+    - name: Clone and build Upsilon-External API
       run: |
-        echo "📥 Cloning Upsilon-External repository for API..."
+        echo "📥 Cloning Upsilon-External..."
         git clone https://github.com/UpsilonNumworks/Upsilon-External.git upsilon-external
-        
-        echo "📂 Setting up API directory..."
-        mkdir -p api
-        cp -r upsilon-external/api/* api/
-        
-        echo "✅ API files available:"
-        ls -la api/
-    
-    - name: Build Pi Stream app
+        echo "🧱 Building API library..."
+        make -C upsilon-external/api clean
+        make -C upsilon-external/api
+        echo "✅ Built files:" && ls -la upsilon-external/api
+
+    - name: Build Pi Stream app (link with API)
       run: |
         echo "🔧 Building Pi Stream app for Upsilon..."
-        
-        # Update Makefile to use correct API path
-        sed -i 's|API=../../api|API=./api|g' Makefile
-        
         make clean
-        make
-        
-        echo "✅ Build completed!"
-        ls -la app.elf
-        file app.elf
-    
-    - name: Create app package
+        make API=./upsilon-external/api
+        echo "✅ Build completed!" && ls -la app.elf && file app.elf
+
+    - name: Create app package (TAR)
       run: |
-        echo "📦 Creating app package..."
-        mkdir -p package
-        cp app.elf package/
-        cp icon.png package/
-        cp app.icon package/
-        
-        # Create a simple TAR archive as required by Upsilon
-        cd package
-        tar -cf ../pi_stream_upsilon_app.tar *
-        cd ..
-        
-        echo "✅ Package created!"
-        ls -la *.tar
-    
+        echo "📦 Creating TAR package..."
+        tar -cf pi_stream_upsilon_app.tar app.elf app.icon icon.png
+        ls -la pi_stream_upsilon_app.tar
+
     - name: Upload app package
       uses: actions/upload-artifact@v4
       with:
